@@ -179,34 +179,62 @@ nav { position:fixed;top:0;left:0;right:0;z-index:1000;padding:20px 48px;display
     backdrop-filter:blur(4px);
 }
 
-/* Loading spinner shown while Drive iframe buffers */
-.reel-loading {
-    position:absolute;inset:0;z-index:4;
-    display:flex;align-items:center;justify-content:center;
-    background:rgba(10,3,30,0.7);
+/* ── VIDEO MODAL (fullscreen overlay) ── */
+.vid-modal {
+    display:none;position:fixed;inset:0;z-index:9990;
+    background:rgba(8,2,28,0.96);backdrop-filter:blur(20px);
+    align-items:center;justify-content:center;
+    flex-direction:column;gap:16px;padding:16px;
 }
-.reel-spinner {
-    width:36px;height:36px;border-radius:50%;
-    border:3px solid rgba(155,127,212,0.25);
+.vid-modal.open { display:flex; }
+
+/* 9:16 video box */
+.vid-modal-box {
+    position:relative;
+    width:min(360px, calc(100vw - 32px));
+    aspect-ratio:9/16;
+    border-radius:20px;overflow:hidden;
+    background:#000;
+    box-shadow:0 32px 100px rgba(0,0,0,0.8);
+    border:1px solid rgba(155,127,212,0.3);
+}
+@media(min-width:700px) {
+    .vid-modal-box { width:min(420px, 42vw); }
+}
+.vid-modal-box iframe {
+    width:100%;height:100%;border:none;display:block;background:#000;
+}
+
+/* Spinner while Drive buffers */
+.vid-modal-spinner {
+    position:absolute;inset:0;z-index:2;pointer-events:none;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(10,3,30,0.85);
+}
+.vid-modal-spinner.hidden { display:none; }
+.spin-ring {
+    width:44px;height:44px;border-radius:50%;
+    border:3px solid rgba(155,127,212,0.2);
     border-top-color:var(--lavender-light);
     animation:spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform:rotate(360deg); } }
 
-/* Hide play UI once video is playing */
-.reel-tile.playing .reel-play    { display:none; }
-.reel-tile.playing .reel-num     { display:none; }
-.reel-tile.playing .reel-thumb   { display:none; }
-.reel-tile.playing .reel-tile-bg { display:none; }
-.reel-tile.playing .reel-overlay { display:none; }
-
-/* iframe fills the tile */
-.reel-tile iframe {
-    position:absolute;inset:0;
-    width:100%;height:100%;
-    border:none;display:none;background:#000;
+/* Close button */
+.vid-modal-close {
+    width:48px;height:48px;border-radius:50%;flex-shrink:0;
+    background:rgba(155,127,212,0.18);border:1px solid rgba(155,127,212,0.4);
+    color:var(--lavender-light);font-size:22px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background 0.2s,transform 0.2s;
 }
-.reel-tile.playing iframe { display:block; }
+.vid-modal-close:hover { background:rgba(155,127,212,0.35);transform:rotate(90deg); }
+
+/* Reel label above the box */
+.vid-modal-label {
+    font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+    color:var(--lavender-light);letter-spacing:2px;text-transform:uppercase;
+}
 
 /* ABOUT */
 .about-inner { display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center; }
@@ -420,10 +448,20 @@ footer { border-top:1px solid rgba(155,127,212,0.12);padding:32px 48px;display:f
 <span>Video Editor · Content Creator · Gujarat, India</span>
 </footer>
 
+<!-- ── FULLSCREEN VIDEO MODAL ── -->
+<div class="vid-modal" id="vModal" onclick="if(event.target===this)closeVideo()">
+    <div class="vid-modal-label" id="vModalLabel">Reel 01</div>
+    <div class="vid-modal-box" id="vModalBox">
+        <div class="vid-modal-spinner" id="vSpinner">
+            <div class="spin-ring"></div>
+        </div>
+        <iframe id="vModalIframe" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    </div>
+    <button class="vid-modal-close" onclick="closeVideo()">✕</button>
+</div>
+
 <script>
-// ── All 24 Google Drive file IDs ──
-// Thumbnails are fetched from Drive's thumbnail API (no login needed for public files).
-// Clicking a tile loads the Drive preview iframe only for that tile (lazy load).
+// ── 24 Google Drive file IDs ──
 const REELS = [
     '1-w7jVS2DrMQNfyvEuSNYKfE2w3b1OQ3C',
     '11LSGAljgaAQwiVda7svQqsOKt_NgjL9q',
@@ -462,13 +500,12 @@ const ACCENTS = [
     'linear-gradient(160deg,#4A2A0A,#180800)',
 ];
 
-// Build the grid
+// Build the thumbnail grid
 const reelGrid = document.getElementById('reelGrid');
 REELS.forEach((driveId, i) => {
-    const num  = String(i + 1).padStart(2, '0');
-    const bg   = ACCENTS[i % ACCENTS.length];
-    // Drive thumbnail API — returns video thumbnail for publicly shared files
-    const thumb = `https://drive.google.com/thumbnail?id=${driveId}&sz=w400-h220`;
+    const num   = String(i + 1).padStart(2, '0');
+    const bg    = ACCENTS[i % ACCENTS.length];
+    const thumb = `https://drive.google.com/thumbnail?id=${driveId}&sz=w400-h711`;
 
     const tile = document.createElement('div');
     tile.className = 'reel-tile reveal';
@@ -481,25 +518,37 @@ REELS.forEach((driveId, i) => {
         <div class="reel-play">
             <div class="reel-play-circle">&#9654;</div>
             <div class="reel-play-label">Tap to play</div>
-        </div>
-        <div class="reel-loading" style="display:none">
-            <div class="reel-spinner"></div>
-        </div>
-        <iframe allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+        </div>`;
 
-    tile.addEventListener('click', () => {
-        if (tile.classList.contains('playing')) return;
-        // Show spinner while Drive iframe loads
-        tile.classList.add('playing');
-        const spinner = tile.querySelector('.reel-loading');
-        spinner.style.display = 'flex';
-        const iframe = tile.querySelector('iframe');
-        iframe.onload = () => { spinner.style.display = 'none'; };
-        iframe.src = `https://drive.google.com/file/d/${driveId}/preview`;
-    });
-
+    tile.addEventListener('click', () => openVideo(driveId, num));
     reelGrid.appendChild(tile);
 });
+
+// ── Modal open / close ──
+const vModal   = document.getElementById('vModal');
+const vIframe  = document.getElementById('vModalIframe');
+const vSpinner = document.getElementById('vSpinner');
+const vLabel   = document.getElementById('vModalLabel');
+
+function openVideo(driveId, num) {
+    vLabel.textContent = 'Reel ' + num;
+    vSpinner.className = 'vid-modal-spinner';
+    vIframe.src = '';
+    vModal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => {
+        vIframe.src = `https://drive.google.com/file/d/${driveId}/preview`;
+        vIframe.onload = () => { vSpinner.className = 'vid-modal-spinner hidden'; };
+    }, 80);
+}
+
+function closeVideo() {
+    vModal.classList.remove('open');
+    document.body.style.overflow = '';
+    vIframe.src = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVideo(); });
 
 // ── Cursor ──
 const cursor = document.getElementById('cursor');
