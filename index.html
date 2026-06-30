@@ -93,91 +93,118 @@ nav { position:fixed;top:0;left:0;right:0;z-index:1000;padding:20px 48px;display
 .demo-header { margin-bottom:52px; }
 .demo-subtitle { font-size:15px;color:rgba(255,255,255,0.45);margin-top:12px; }
 
-/* 4-col reel grid */
+/* 4-col reel grid — minmax(0,1fr) prevents overflow on mobile */
 .reel-grid {
     display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:18px;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:16px;
 }
 
 /* Individual reel tile — 9:16 portrait */
 .reel-tile {
     position:relative;
     aspect-ratio:9/16;
-    border-radius:20px;
+    border-radius:18px;
     overflow:hidden;
-    background:linear-gradient(160deg,rgba(42,26,94,0.9),rgba(15,5,40,0.95));
+    background:#0f0528;
     border:1px solid rgba(155,127,212,0.2);
     cursor:pointer;
     transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1),border-color 0.25s,box-shadow 0.3s;
+    min-width:0; /* prevents grid blowout */
 }
 .reel-tile:hover {
-    transform:translateY(-8px) scale(1.02);
-    border-color:rgba(196,168,240,0.5);
-    box-shadow:0 24px 60px rgba(107,79,175,0.45);
+    transform:translateY(-6px) scale(1.02);
+    border-color:rgba(196,168,240,0.55);
+    box-shadow:0 20px 50px rgba(107,79,175,0.45);
+}
+
+/* Thumbnail image — fills tile, loaded from YouTube CDN */
+.reel-thumb {
+    position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;z-index:0;
+    transition:transform 0.35s ease, opacity 0.4s ease;
+    opacity:0;
+}
+.reel-thumb.loaded { opacity:1; }
+.reel-tile:hover .reel-thumb { transform:scale(1.04); }
+
+/* Gradient fallback bg (visible until thumbnail loads) */
+.reel-tile-bg {
+    position:absolute;inset:0;z-index:0;
+}
+
+/* Dark scrim over thumbnail */
+.reel-overlay {
+    position:absolute;inset:0;z-index:1;
+    background:linear-gradient(to top,rgba(10,3,30,0.78) 0%,rgba(10,3,30,0.25) 55%,rgba(10,3,30,0.1) 100%);
+    transition:background 0.25s;
+}
+.reel-tile:hover .reel-overlay {
+    background:linear-gradient(to top,rgba(10,3,30,0.65) 0%,rgba(107,79,175,0.22) 55%,rgba(107,79,175,0.08) 100%);
 }
 
 /* Number badge */
 .reel-num {
-    position:absolute;top:12px;left:12px;z-index:3;
-    background:rgba(42,26,94,0.85);border:1px solid rgba(155,127,212,0.4);
-    border-radius:8px;padding:4px 10px;
-    font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+    position:absolute;top:10px;left:10px;z-index:3;
+    background:rgba(20,10,50,0.82);border:1px solid rgba(155,127,212,0.45);
+    border-radius:7px;padding:3px 9px;
+    font-family:'Syne',sans-serif;font-size:10px;font-weight:700;
     color:var(--lavender-light);letter-spacing:1px;
-    backdrop-filter:blur(6px);
+    backdrop-filter:blur(8px);
 }
-
-/* Decorative gradient bg per tile (cycles through accent colours) */
-.reel-tile-bg {
-    position:absolute;inset:0;
-    opacity:0.5;
-    transition:opacity 0.3s;
-}
-.reel-tile:hover .reel-tile-bg { opacity:0.7; }
 
 /* Play overlay */
 .reel-play {
     position:absolute;inset:0;z-index:2;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
-    background:linear-gradient(to top,rgba(15,5,40,0.7) 0%,rgba(15,5,40,0.2) 60%,transparent 100%);
-    transition:background 0.25s;
-}
-.reel-tile:hover .reel-play {
-    background:linear-gradient(to top,rgba(15,5,40,0.55) 0%,rgba(107,79,175,0.25) 60%,transparent 100%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
 }
 .reel-play-circle {
-    width:58px;height:58px;border-radius:50%;
+    width:54px;height:54px;border-radius:50%;
     background:linear-gradient(135deg,var(--lavender),var(--lavender-deep));
     display:flex;align-items:center;justify-content:center;
-    font-size:22px;
-    box-shadow:0 8px 32px rgba(107,79,175,0.6);
-    transition:transform 0.25s,box-shadow 0.25s;
+    font-size:20px;padding-left:3px;
+    box-shadow:0 6px 28px rgba(107,79,175,0.65);
+    transition:transform 0.22s,box-shadow 0.22s;
 }
 .reel-tile:hover .reel-play-circle {
     transform:scale(1.12);
-    box-shadow:0 12px 48px rgba(107,79,175,0.8);
+    box-shadow:0 10px 42px rgba(107,79,175,0.85);
 }
 .reel-play-label {
-    font-size:11px;font-weight:500;
-    color:rgba(255,255,255,0.7);
+    font-size:10px;font-weight:500;
+    color:rgba(255,255,255,0.8);
     letter-spacing:0.5px;
-    background:rgba(0,0,0,0.3);
-    padding:4px 12px;border-radius:100px;
+    background:rgba(0,0,0,0.35);
+    padding:3px 10px;border-radius:100px;
     backdrop-filter:blur(4px);
 }
 
-/* Hide play UI once video loaded */
-.reel-tile.playing .reel-play { display:none; }
-.reel-tile.playing .reel-num  { display:none; }
+/* Loading spinner shown while Drive iframe buffers */
+.reel-loading {
+    position:absolute;inset:0;z-index:4;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(10,3,30,0.7);
+}
+.reel-spinner {
+    width:36px;height:36px;border-radius:50%;
+    border:3px solid rgba(155,127,212,0.25);
+    border-top-color:var(--lavender-light);
+    animation:spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Hide play UI once video is playing */
+.reel-tile.playing .reel-play    { display:none; }
+.reel-tile.playing .reel-num     { display:none; }
+.reel-tile.playing .reel-thumb   { display:none; }
 .reel-tile.playing .reel-tile-bg { display:none; }
+.reel-tile.playing .reel-overlay { display:none; }
 
 /* iframe fills the tile */
 .reel-tile iframe {
     position:absolute;inset:0;
     width:100%;height:100%;
-    border:none;
-    display:none;
-    background:#000;
+    border:none;display:none;background:#000;
 }
 .reel-tile.playing iframe { display:block; }
 
@@ -213,7 +240,7 @@ footer { border-top:1px solid rgba(155,127,212,0.12);padding:32px 48px;display:f
 
 /* ── RESPONSIVE ── */
 @media(max-width:1200px) {
-    .reel-grid { grid-template-columns:repeat(3,1fr); }
+    .reel-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
 }
 @media(max-width:900px) {
     .hero-inner { grid-template-columns:1fr;padding:80px 24px 40px; }
@@ -227,12 +254,16 @@ footer { border-top:1px solid rgba(155,127,212,0.12);padding:32px 48px;display:f
     footer { flex-direction:column;gap:12px;text-align:center; }
     #contact { padding:70px 24px; }
     .contact-card { padding:40px 24px; }
-    .reel-grid { grid-template-columns:repeat(2,1fr);gap:14px; }
+    .reel-grid { grid-template-columns:repeat(3,minmax(0,1fr));gap:10px; }
 }
-@media(max-width:520px) {
-    .reel-grid { grid-template-columns:repeat(2,1fr);gap:10px; }
+@media(max-width:640px) {
+    .reel-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:8px; }
+    .reel-play-circle { width:38px;height:38px;font-size:14px; }
+    .reel-num { font-size:9px;padding:2px 7px; }
+    .reel-play-label { display:none; }
     .hero-cta { flex-direction:column; }
     .btn-primary,.btn-outline { text-align:center;justify-content:center; }
+    .demo-section { padding:60px 16px; }
 }
 </style>
 </head>
@@ -390,10 +421,13 @@ footer { border-top:1px solid rgba(155,127,212,0.12);padding:32px 48px;display:f
 </footer>
 
 <script>
-// ── All 24 Drive file IDs ──
+// ── All 24 Google Drive file IDs ──
+// Thumbnails are fetched from Drive's thumbnail API (no login needed for public files).
+// Clicking a tile loads the Drive preview iframe only for that tile (lazy load).
 const REELS = [
     '1-w7jVS2DrMQNfyvEuSNYKfE2w3b1OQ3C',
     '11LSGAljgaAQwiVda7svQqsOKt_NgjL9q',
+    '13NzqqOoLIlxAw8BnoWlVg1ajGAO2z8CZ',
     '15Clc7nWCz4fbVuiVkk9-K_NzE2VHTE6t',
     '18FGG52shZdjpl6lM3xO7eaZ_6u3VP1zV',
     '19WgTeTcaDxfFpIJG9V2cdx-ye_viBKhH',
@@ -417,43 +451,55 @@ const REELS = [
     '1xbgH0pspmUNziA-c83zcRxUOKrp683fu'
 ];
 
-// Accent gradients cycling across tiles
 const ACCENTS = [
-    'linear-gradient(160deg,#4A1080,#1A0040)',
-    'linear-gradient(160deg,#1A4080,#080A30)',
     'linear-gradient(160deg,#3A0A6A,#0D0020)',
-    'linear-gradient(160deg,#2A1A6A,#080018)',
-    'linear-gradient(160deg,#4A2A0A,#180800)',
-    'linear-gradient(160deg,#1A5A2A,#001008)',
-    'linear-gradient(160deg,#5A1A3A,#200010)',
+    'linear-gradient(160deg,#1A4080,#080A30)',
+    'linear-gradient(160deg,#4A1080,#1A0040)',
     'linear-gradient(160deg,#0A3A60,#001020)',
+    'linear-gradient(160deg,#5A1A3A,#200010)',
+    'linear-gradient(160deg,#2A1A6A,#080018)',
+    'linear-gradient(160deg,#1A5A2A,#001008)',
+    'linear-gradient(160deg,#4A2A0A,#180800)',
 ];
 
 // Build the grid
-const grid = document.getElementById('reelGrid');
-REELS.forEach((id, i) => {
-    const num = String(i + 1).padStart(2, '0');
-    const bg  = ACCENTS[i % ACCENTS.length];
+const reelGrid = document.getElementById('reelGrid');
+REELS.forEach((driveId, i) => {
+    const num  = String(i + 1).padStart(2, '0');
+    const bg   = ACCENTS[i % ACCENTS.length];
+    // Drive thumbnail API — returns video thumbnail for publicly shared files
+    const thumb = `https://drive.google.com/thumbnail?id=${driveId}&sz=w400-h220`;
+
     const tile = document.createElement('div');
     tile.className = 'reel-tile reveal';
     tile.innerHTML = `
         <div class="reel-tile-bg" style="background:${bg}"></div>
+        <img class="reel-thumb" src="${thumb}" alt="Reel ${num}" loading="lazy"
+             onload="this.classList.add('loaded')" onerror="this.style.display='none'">
+        <div class="reel-overlay"></div>
         <div class="reel-num">Reel ${num}</div>
         <div class="reel-play">
-            <div class="reel-play-circle">▶</div>
+            <div class="reel-play-circle">&#9654;</div>
             <div class="reel-play-label">Tap to play</div>
         </div>
+        <div class="reel-loading" style="display:none">
+            <div class="reel-spinner"></div>
+        </div>
         <iframe allow="autoplay; fullscreen" allowfullscreen></iframe>`;
-    tile.addEventListener('click', () => playReel(tile, id));
-    grid.appendChild(tile);
-});
 
-function playReel(tile, driveId) {
-    if (tile.classList.contains('playing')) return;
-    tile.classList.add('playing');
-    tile.querySelector('iframe').src =
-        'https://drive.google.com/file/d/' + driveId + '/preview';
-}
+    tile.addEventListener('click', () => {
+        if (tile.classList.contains('playing')) return;
+        // Show spinner while Drive iframe loads
+        tile.classList.add('playing');
+        const spinner = tile.querySelector('.reel-loading');
+        spinner.style.display = 'flex';
+        const iframe = tile.querySelector('iframe');
+        iframe.onload = () => { spinner.style.display = 'none'; };
+        iframe.src = `https://drive.google.com/file/d/${driveId}/preview`;
+    });
+
+    reelGrid.appendChild(tile);
+});
 
 // ── Cursor ──
 const cursor = document.getElementById('cursor');
