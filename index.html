@@ -202,7 +202,12 @@ nav { position:fixed;top:0;left:0;right:0;z-index:1000;padding:20px 48px;display
     .vid-modal-box { width:min(420px, 42vw); }
 }
 .vid-modal-box iframe {
-    width:100%;height:100%;border:none;display:block;background:#000;
+    position:absolute;
+    top:0;left:0;
+    width:100%;
+    /* Extend height below the box so Drive's controls bar is hidden by overflow:hidden */
+    height:calc(100% + 180px);
+    border:none;display:block;background:#000;
 }
 
 /* Spinner while Drive buffers */
